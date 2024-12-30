@@ -1,0 +1,109 @@
+<!doctypehtml><meta charset=utf-8><title>Wyltl Playground</title><script src=./wasm/wasm_exec.js></script><div class=container><header><br><link href=./static/test.css rel=stylesheet><meta content="width=device-width,initial-scale=1"name=viewport></header><section><br><br><h1 style=text-align:center>Welcome to the Wyltl Playground!</h1></section><section><br><nav><a href=./index.html><button>Home</button></a> <a href=./introduction.html><button>Introduction</button></a> <a href=./specification.html><button>Specification</button></a> <a href=./download.html><button>Download</button></a></nav></section><section><br><br><textarea id=input placeholder="Enter your Wyltl code here..."style=overflow-y:hidden></textarea></section><section><br><br><navwithcorners><button class=buttonrev id=tokenize>Tokenize</button> <button class=buttonrev id=parse>Parse</button> <button class=buttonrev id=run>Interpret</button> <button class=buttonrev id=compile hidden>Compile</button> <button class=buttonrev id=vm hidden>Virtual Machine</button></navwithcorners></section><section><br><br><textarea id=output placeholder="The output will appear here..."readonly></textarea></section><section><br><br><h1 style=text-align:center>Created by Dineth Mallawarachchi</h1></section><script>function autoResizeTextArea(textarea) {
+			  textarea.style.height = "auto";
+			  textarea.style.height = textarea.scrollHeight + "px"; 
+			}
+
+			// Resize on input
+			document.addEventListener("input", function (event) {
+			  if (event.target.tagName === "TEXTAREA") {
+				autoResizeTextArea(event.target);
+			  }
+			});
+
+			function updateTextAreaContent(textarea, newContent) {
+			  textarea.value = newContent;
+			  autoResizeTextArea(textarea);
+			}
+			
+			if (!WebAssembly.instantiateStreaming) {
+				WebAssembly.instantiateStreaming = async (resp, importObject) => {
+					const source = await (await resp).arrayBuffer();
+					return await WebAssembly.instantiate(source, importObject);
+				};
+			}
+
+			function formatExecutionTime(startTime) {
+				const endTime = performance.now();
+				const executionTime = endTime - startTime;
+				return `[Execution time: ${executionTime.toFixed(2)}ms]`;
+			}
+
+			const go = new Go();
+			WebAssembly.instantiateStreaming(fetch("./wasm/main.wasm"), go.importObject)
+				.then((result) => {
+					go.run(result.instance);
+					
+					document.getElementById("run").onclick = function() {
+						const startTime = performance.now();
+						const code = document.getElementById("input").value;
+						document.getElementById("output").value = "";
+						const result = interpretWyltl(code);
+						if (result) {
+							document.getElementById("output").value += result + "\n";
+						}
+						document.getElementById("output").value += formatExecutionTime(startTime) + "\n";
+					};
+
+					document.getElementById("tokenize").onclick = function() {
+						const startTime = performance.now();
+						const code = document.getElementById("input").value;
+						document.getElementById("output").value = "";
+						const result = tokenizeWyltl(code);
+						if (result) {
+							try {
+								const tokens = JSON.parse(result);
+								const formatted = tokens.map(token => 
+									`Type: ${token.type}, Literal: "${token.literal}"`
+								).join('\n');
+								document.getElementById("output").value += formatted + "\n";
+							} catch (e) {
+								document.getElementById("output").value += result + "\n";
+							}
+						}
+						document.getElementById("output").value += formatExecutionTime(startTime) + "\n";
+					};
+
+					document.getElementById("parse").onclick = function() {
+						const startTime = performance.now();
+						const code = document.getElementById("input").value;
+						document.getElementById("output").value = "";
+						const result = parseWyltl(code);
+						if (result) {
+							document.getElementById("output").value += result + "\n";
+						}
+						document.getElementById("output").value += formatExecutionTime(startTime) + "\n";
+					};
+
+					document.getElementById("compile").onclick = function() {
+						const startTime = performance.now();
+						const code = document.getElementById("input").value;
+						document.getElementById("output").value = "";
+						const result = compileWyltl(code);
+						if (result) {
+							document.getElementById("output").value += result + "\n";
+						}
+						document.getElementById("output").value += formatExecutionTime(startTime) + "\n";
+					};
+
+					document.getElementById("vm").onclick = function() {
+						const startTime = performance.now();
+						const code = document.getElementById("input").value;
+						document.getElementById("output").value = "";
+						const result = runVirtualMachine(code);
+						if (result) {
+							document.getElementById("output").value += result + "\n";
+						}
+						document.getElementById("output").value += formatExecutionTime(startTime) + "\n";
+					};
+				})
+				.catch((err) => {
+					console.error('Failed to load WASM:', err);
+					document.getElementById("output").value = "Failed to load WASM: " + err;
+				});
+
+			const originalConsoleLog = console.log;
+			console.log = function() {
+				const output = document.getElementById("output");
+				output.value += Array.from(arguments).join(" ") + "\n";
+				originalConsoleLog.apply(console, arguments);
+			};</script></div>
